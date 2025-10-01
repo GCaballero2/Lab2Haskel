@@ -30,47 +30,57 @@ fd = Bin (Neg (Bin r Imp r)) And fc            -- ¬(r ⊃ r) ∧ (¬¬p ∨ ¬(
 
 -- EJERCICIO 1 --
 --1.1)
+interpretacionBC :: BC -> Bool -> Bool -> Bool
+interpretacionBC bc a b = 
+  case bc of
+    And -> a && b
+    Or  -> a || b
+    Imp -> not a || b
+    Iff -> a == b
+
 eval :: (Var -> Bool) -> L -> Bool
 eval i (V x) = i x
-eval i (Neg (V x)) = not (eval i (V x))
-eval i (Bin f1 And f2) = (eval i f1) && (eval i f2)
-eval i (Bin f1 Or f2) = (eval i f1) || (eval i f2)
-eval i (Bin f1 Imp f2) = (eval i f1) || (eval i f2)
-eval i (Bin f1 Iff f2) = (eval i f1) == (eval i f2)
+eval i (Neg f) = not (eval i f)
+eval i (Bin f1 bc f2) = interpretacionBC bc (eval i f1) (eval i f2)
 
 
 --1.2)
 itodasverdaderas ::  Var -> Bool
-itodasverdaderas = undefined
+itodasverdaderas _ = True
 
 --1.3)
 itodasfalsas :: Var -> Bool
-itodasfalsas = undefined
+itodasfalsas _ = False
 
 --1.4)
 irfalsa :: Var -> Bool
-irfalsa = undefined 
+irfalsa "r" = False
+irfalsa _ = True
 
 --1.5)
 -- Completar con verdadera/falsa:
--- fa es false bajo itodasfalsas
--- fb es false bajo itodasfalsas
--- fc es true bajo itodasfalsas
--- fd es false bajo itodasfalsas
+-- fa es falsa bajo itodasfalsas
+-- fb es falsa bajo itodasfalsas
+-- fc es verdadera bajo itodasfalsas
+-- fd es falsa bajo itodasfalsas
 -- 
--- fa es true bajo itodasverdaderas
--- fb es false bajo itodasverdaderas
--- fc es true bajo itodasverdaderas
--- fd es false bajo itodasverdaderas
+-- fa es verdadera bajo itodasverdaderas
+-- fb es falsa bajo itodasverdaderas
+-- fc es verdadera bajo itodasverdaderas
+-- fd es falsa bajo itodasverdaderas
 --
--- fa es true bajo irfalsa
--- fb es false bajo irfalsa
--- fc es true bajo irfalsa
--- fd es false bajo irfalsa
+-- fa es verdadera bajo irfalsa
+-- fb es falsa bajo irfalsa
+-- fc es verdadera bajo irfalsa
+-- fd es falsa bajo irfalsa
 
 --1.6)
 creari :: [(Var, Bool)] -> (Var -> Bool)
-creari = undefined
+creari [] _ = False
+creari ((v,b):xs) x
+  | x == v    = b
+  | otherwise = creari xs x
+
 
 --1.7)
 -- Responder aquí.
@@ -100,14 +110,7 @@ evalFila :: L -> Fila -> Bool
 evalFila (V x) [] = error "variable no encontrada"
 evalFila (V x) ((a,b):xs) = if x == a then b else evalFila (V x) xs
 evalFila (Neg f) fila = not (evalFila f fila)
-evalFila (Bin a c b) fila = 
-   let ea = evalFila a fila
-       eb = evalFila b fila
-  in case c of
-       And -> ea && eb
-       Or  -> ea || eb
-       Imp -> not ea || eb
-       Iff -> ea == eb
+evalFila (Bin a c b) fila = interpretacionBC c (evalFila a fila) (evalFila b fila)
  
 
 tv :: L -> TV
@@ -150,47 +153,3 @@ instance Show L where
   show (Bin a Or b)  = "(" ++ show a ++ ") \\/ (" ++ show b ++ ")"
   show (Bin a Imp b) = "(" ++ show a ++ ") --> (" ++ show b ++ ")"
   show (Bin a Iff b) = "(" ++ show a ++ ") <-> (" ++ show b ++ ")"
-
-
-
-
-
-
-
-
-
-
-
-  -- EJERCICIO 1 --
---1.1)
-eval :: (Var -> Bool) -> L -> Bool
-eval i (V x) = i x
-eval i (Neg (V x)) = not (eval i (V x))
-eval i (Bin f1 And f2) = (eval i f1) && (eval i f2)
-eval i (Bin f1 Or f2) = (eval i f1) || (eval i f2)
-eval i (Bin f1 Imp f2) = (eval i f1) || (eval i f2)
-eval i (Bin f1 Iff f2) = (eval i f1) == (eval i f2)
-
---1.2)
-itodasverdaderas ::  Var -> Bool
-itodasverdaderas _ = True
-
---1.3)
-itodasfalsas :: Var -> Bool
-itodasfalsas _ = False
-
---1.4)
-irfalsa :: Var -> Bool
-irfalsa "r" = False
-irfalsa _ = True
-
-
---1.6)
-creari :: [(Var, Bool)] -> Var -> Bool
-creari [] v =  error "la variable no se encuentra en la lista"
-creari ((var, b):xs) v
-  | v == var = b
-  | otherwise = creari xs v 
-
---1.7)
--- Si, la interpretacion es la misma porque creari en el unico caso que da false es con la letra "r"
