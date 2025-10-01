@@ -97,6 +97,7 @@ filas :: [Var] -> [Fila]
 filas [] = [[]]
 filas (x:xs) = [ (x, v):fila | v <- [False, True], fila <- filas xs ]
 
+--2.2)
 nub :: [Var] -> [Var]
 nub [] = []
 nub (x:xs) = if elem x xs then nub xs else x : nub xs
@@ -106,28 +107,31 @@ listarProp (V x) = [x]
 listarProp (Neg f) = listarProp f
 listarProp (Bin f1 _ f2) = nub (listarProp f1 ++ listarProp f2)
 
-evalFila :: L -> Fila -> Bool
-evalFila (V x) [] = error "variable no encontrada"
-evalFila (V x) ((a,b):xs) = if x == a then b else evalFila (V x) xs
-evalFila (Neg f) fila = not (evalFila f fila)
-evalFila (Bin a c b) fila = interpretacionBC c (evalFila a fila) (evalFila b fila)
- 
-
 tv :: L -> TV
-tv f =  [ (fila, evalFila f fila) | fila <- filas (listarProp f) ]
+tv f = [ (fila, eval (creari fila) f) | fila <- filas (listarProp f) ]
 
 --2.3)
-listaBC :: [(Bool)] -> BC -> Bool
-listaBC x bc = x
-listaBC (x:xs) And = x && (listaBC xs bc)
+listaBC :: [Bool] -> BC -> Bool
+listaBC []     And = True          -- neutro de (&&)
+listaBC []     Or  = False         -- neutro de (||)
+listaBC (x:xs) And = x && listaBC xs And
+listaBC (x:xs) Or  = x || listaBC xs Or
+listaBC _ Imp = error "Imp no es asociativa para listas"
+listaBC _ Iff = error "Iff no es asociativa para listas"
 
+
+data Clase = Tau | Contra | Cont | Sat | Fal
+  deriving (Eq, Show)
 
 es :: L -> Clase -> Bool
-es f Tau = listaBC [ (evalFila f fila) | fila <- filas (listarProp f) ] And
-es f Contra = False == listaBC [ (evalFila f fila) | fila <- filas (listarProp f) ] Or
-es f Cont =
-es f Sat =
-es f Fal
+es f Tau    = listaBC vals And
+es f Contra = not (listaBC vals Or)
+es f Cont   = listaBC vals Or && not (listaBC vals And)
+es f Sat    = listaBC vals Or
+es f Fal    = not (listaBC vals And)
+  where
+    vals = [ eval (creari fila) f | fila <- filas (listarProp f) ]
+
 
 --2.4)
 -- Completar con tautología/contingencia/contradicción:
@@ -138,7 +142,14 @@ es f Fal
 
 --2.5) 
 fnc :: L -> L
-fnc = undefined
+fnc (V x) = undefined
+fnc (Neg f) = undefined
+nc (Bin f1 Imp f2) = fnc (Bin (Neg f1) Or f2)
+fnc (Bin f1 iff f2) = fnc ( Bin
+                                (Bin f1 Imp f2))
+                              And
+                                (Bin f2 Imp f1))
+
 
 
 ----------------------------------------------------------------------------------
