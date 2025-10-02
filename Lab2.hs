@@ -120,9 +120,6 @@ listaBC _ Imp = error "Imp no es asociativa para listas"
 listaBC _ Iff = error "Iff no es asociativa para listas"
 
 
-data Clase = Tau | Contra | Cont | Sat | Fal
-  deriving (Eq, Show)
-
 es :: L -> Clase -> Bool
 es f Tau    = listaBC vals And
 es f Contra = not (listaBC vals Or)
@@ -141,15 +138,20 @@ es f Fal    = not (listaBC vals And)
 -- fd es ...
 
 --2.5) 
-fnc :: L -> L
-fnc (V x) = undefined
-fnc (Neg f) = undefined
-nc (Bin f1 Imp f2) = fnc (Bin (Neg f1) Or f2)
-fnc (Bin f1 iff f2) = fnc ( Bin
-                                (Bin f1 Imp f2))
-                              And
-                                (Bin f2 Imp f1))
+dobleNeg :: L -> L
+dobleNeg (V x) = V x
+dobleNeg (Neg (Neg f)) = dobleNeg f
+dobleNeg (Neg f) = Neg (dobleNeg f)
+dobleNeg (Bin f1 op f2) = Bin (dobleNeg f1) op (dobleNeg f2)
 
+fnc :: L -> L
+fnc (V x) = V x
+fnc (Neg (Bin f1 And f2)) = fnc (dobleNeg (Bin (Neg f1) Or (Neg f2)))
+fnc (Neg (Bin f1 Or f2)) = fnc (dobleNeg(Bin (Neg f1) And (Neg f2)))
+fnc (Neg (V x)) = Neg (V x)
+fnc (Bin f1 Imp f2) = fnc ( dobleNeg (Bin (Neg f1) Or f2) )
+fnc (Bin f1 Iff f2) = fnc ( dobleNeg ( Bin (Bin f1 Imp f2) And (Bin f2 Imp f1)))
+fnc (Bin f1 c f2) = Bin ( fnc (dobleNeg f1)) c (fnc (dobleNeg f2))
 
 
 ----------------------------------------------------------------------------------
