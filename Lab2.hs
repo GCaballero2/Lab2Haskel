@@ -121,13 +121,17 @@ listaBC _ Iff = error "Iff no es asociativa para listas"
 
 
 es :: L -> Clase -> Bool
-es f Tau    = listaBC vals And
-es f Contra = not (listaBC vals Or)
-es f Cont   = listaBC vals Or && not (listaBC vals And)
-es f Sat    = listaBC vals Or
-es f Fal    = not (listaBC vals And)
+es f clase = case clase of
+  Tau    -> todos
+  Contra -> not alguno
+  Cont   -> alguno && not todos
+  Sat    -> alguno
+  Fal    -> not todos
   where
-    vals = [ eval (creari fila) f | fila <- filas (listarProp f) ]
+    vals   = [ eval (creari fila) f | fila <- filas (listarProp f) ]
+    todos  = listaBC vals And
+    alguno = listaBC vals Or
+
 
 
 --2.4)
@@ -138,21 +142,32 @@ es f Fal    = not (listaBC vals And)
 -- fd es ...
 
 --2.5) 
-dobleNeg :: L -> L
-dobleNeg (V x) = V x
-dobleNeg (Neg (Neg f)) = dobleNeg f
-dobleNeg (Neg f) = Neg (dobleNeg f)
-dobleNeg (Bin f1 op f2) = Bin (dobleNeg f1) op (dobleNeg f2)
+deMorganNegaciones :: L -> L
+deMorganNegaciones (V x) = V x
+deMorganNegaciones (Neg (V x)) = Neg (V x)
+deMorganNegaciones (Neg (Neg f)) = deMorganNegaciones f
+deMorganNegaciones (Neg (Bin f And g)) = deMorganNegaciones (Bin (Neg f) Or  (Neg g))   -- De Morgan
+deMorganNegaciones (Neg (Bin f Or  g)) = deMorganNegaciones (Bin (Neg f) And (Neg g))   -- De Morgan
+deMorganNegaciones (Neg f) = Neg (deMorganNegaciones f)   -- (por si quedara algo suelto)
+deMorganNegaciones (Bin f c g) = Bin (deMorganNegaciones f) c (deMorganNegaciones g)
+
+elim :: L -> L
+elim (V x)              = V x
+elim (Neg f)            = Neg (elim f)
+elim (Bin f Iff g)      = elim (Bin (Bin f Imp g) And (Bin g Imp f))
+elim (Bin f Imp g)      = elim (Bin (Neg f) Or g)
+elim (Bin f c   g)      = Bin (elim f) c (elim g)   -- c ∈ {And, Or}
+
+distrib :: L -> L
+distrib (V x) = V x
+distrib ( Neg(V x)) = Neg(V x)
+distrib (Bin f And g) = Bin (distrib f) And (distrib g)
+distrib (Bin f Or (Bin g And h)) =  distrib (Bin (Bin f Or g) And (Bin f Or h))
+distrib (Bin (Bin f And g) Or h) =  distrib (Bin (Bin f Or h) And (Bin g Or h))
+distrib (Bin f c g) = Bin (distrib f) c (distrib g)
 
 fnc :: L -> L
-fnc (V x) = V x
-fnc (Neg (Bin f1 And f2)) = fnc (dobleNeg (Bin (Neg f1) Or (Neg f2)))
-fnc (Neg (Bin f1 Or f2)) = fnc (dobleNeg(Bin (Neg f1) And (Neg f2)))
-fnc (Neg (V x)) = Neg (V x)
-fnc (Bin f1 Imp f2) = fnc ( dobleNeg (Bin (Neg f1) Or f2) )
-fnc (Bin f1 Iff f2) = fnc ( dobleNeg ( Bin (Bin f1 Imp f2) And (Bin f2 Imp f1)))
-fnc (Bin f1 c f2) = Bin ( fnc (dobleNeg f1)) c (fnc (dobleNeg f2))
-
+fnc = distrib . deMorganNegaciones . elim
 
 ----------------------------------------------------------------------------------
 -- Pretty Printing (rudimentario)
